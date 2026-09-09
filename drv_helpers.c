@@ -378,9 +378,10 @@ int drv_dumb_bo_create_ex(struct bo *bo, uint32_t width, uint32_t height, uint32
 		    DIV_ROUND_UP(aligned_width * layout_from_format(format)->bytes_per_pixel[0], 4);
 		create_dumb.bpp = 32;
 	} else {
-		/* Align for llvmpipe 64-byte tile size for dumb_driver */
-		aligned_width = ALIGN(aligned_width, MESA_LLVMPIPE_TILE_SIZE);
-		aligned_height = ALIGN(aligned_height, MESA_LLVMPIPE_TILE_SIZE);
+		uint32_t tile = (quirks & BO_QUIRK_TILE_ALIGN_16) ? 16 : MESA_LLVMPIPE_TILE_SIZE;
+
+		aligned_width = ALIGN(aligned_width, tile);
+		aligned_height = ALIGN(aligned_height, tile);
 		create_dumb.bpp = layout_from_format(format)->bytes_per_pixel[0] * 8;
 	}
 	create_dumb.width = aligned_width;
