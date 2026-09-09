@@ -64,6 +64,43 @@ static int dumb_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint32_t
 	return -EINVAL;
 }
 
+/*
+ * exynos-drm is paired with a Mali Utgard GPU driven by lima, which imports
+ * these buffers as render targets. lima_resource_from_handle() demands a stride
+ * of exactly align(width, 16) * bpp, so llvmpipe's 64-pixel padding makes narrow
+ * buffers (a 1px-wide divider, say) fail to import.
+ */
+static int exynos_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t format,
+			    uint64_t use_flags)
+{
+	return drv_dumb_bo_create_ex(bo, width, height, format, use_flags,
+				     BO_QUIRK_TILE_ALIGN_16);
+}
+
+static int exynos_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint32_t height,
+					   uint32_t format, const uint64_t *modifiers,
+					   uint32_t count)
+{
+	for (uint32_t i = 0; i < count; i++) {
+		if (modifiers[i] == DRM_FORMAT_MOD_LINEAR)
+			return exynos_bo_create(bo, width, height, format, 0);
+	}
+
+	return -EINVAL;
+}
+
+const struct backend backend_exynos = {
+	.name = "exynos",
+	.init = dumb_driver_init,
+	.bo_create = exynos_bo_create,
+	.bo_create_with_modifiers = exynos_bo_create_with_modifiers,
+	.bo_destroy = drv_dumb_bo_destroy,
+	.bo_import = drv_prime_bo_import,
+	.bo_map = drv_dumb_bo_map,
+	.bo_unmap = drv_bo_munmap,
+	.resolve_format_and_use_flags = drv_resolve_format_and_use_flags_helper,
+};
+
 INIT_DUMB_DRIVER(evdi)
 INIT_DUMB_DRIVER(komeda)
 INIT_DUMB_DRIVER(marvell)

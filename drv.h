@@ -48,6 +48,7 @@ extern "C" {
 /* Quirks for allocating a buffer. */
 #define BO_QUIRK_NONE			0
 #define BO_QUIRK_DUMB32BPP		(1ull << 0)
+#define BO_QUIRK_TILE_ALIGN_16		(1ull << 1)
 
 /* Map flags */
 #define BO_MAP_NONE 0
