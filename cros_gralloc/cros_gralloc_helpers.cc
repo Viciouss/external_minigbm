@@ -139,6 +139,30 @@ uint64_t cros_gralloc_convert_usage(uint64_t usage)
 	return use_flags;
 }
 
+/*
+ * The Exynos 4 mixer (HDMI) only scans out ARGB-ordered formats, so a
+ * composer client target in RGBA byte order can't be shown there. Allocate
+ * client targets without CPU access in BGRA order instead. GPU rendering is
+ * unaffected: Mesa and drm_hwcomposer take the real fourcc from gralloc, not
+ * from the HAL format. FIMD (the LCD) scans out both orders.
+ */
+uint32_t cros_gralloc_client_target_format(uint32_t drm_format, uint64_t usage)
+{
+	const uint64_t cpu_usage = GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK;
+
+	if (!(usage & GRALLOC_USAGE_HW_FB) || (usage & cpu_usage))
+		return drm_format;
+
+	switch (drm_format) {
+	case DRM_FORMAT_ABGR8888:
+		return DRM_FORMAT_ARGB8888;
+	case DRM_FORMAT_XBGR8888:
+		return DRM_FORMAT_XRGB8888;
+	default:
+		return drm_format;
+	}
+}
+
 uint32_t cros_gralloc_convert_map_usage(uint64_t usage)
 {
 	uint32_t map_flags = BO_MAP_NONE;

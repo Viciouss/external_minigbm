@@ -79,7 +79,8 @@ static int gralloc0_alloc(alloc_device_t *dev, int w, int h, int format, int usa
 	descriptor.height = h;
 	descriptor.droid_format = format;
 	descriptor.droid_usage = usage;
-	descriptor.drm_format = cros_gralloc_convert_format(format);
+	descriptor.drm_format =
+	    cros_gralloc_client_target_format(cros_gralloc_convert_format(format), usage);
 	descriptor.use_flags = cros_gralloc_convert_usage(usage);
 	descriptor.reserved_region_size = 0;
 
