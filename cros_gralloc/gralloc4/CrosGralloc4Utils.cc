@@ -78,6 +78,8 @@ int convertToCrosDescriptor(const BufferDescriptorInfo& descriptor,
         ALOGE("Failed to convert descriptor. Unsupported usage flags %s", usageString.c_str());
         return -EINVAL;
     }
+    outCrosDescriptor->drm_format =
+            cros_gralloc_client_target_format(outCrosDescriptor->drm_format, descriptor.usage);
     return 0;
 }
 
