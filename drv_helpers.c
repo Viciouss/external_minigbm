@@ -334,12 +334,17 @@ int drv_bo_from_format_and_padding(struct bo *bo, uint32_t stride, uint32_t stri
 	return 0;
 }
 
-int drv_dumb_bo_create_ex(struct bo *bo, uint32_t width, uint32_t height, uint32_t format,
-			  uint64_t use_flags, uint64_t quirks)
+/*
+ * Computes the width, height and bpp that drv_dumb_bo_create_ex() passes to
+ * DRM_IOCTL_MODE_CREATE_DUMB, and the height it lays out the planes with.
+ * Backends that allocate through a driver-specific ioctl use this to get the
+ * same layout as a dumb buffer.
+ */
+void drv_dumb_bo_get_dimensions(struct bo *bo, uint32_t width, uint32_t height, uint32_t format,
+				uint64_t quirks, uint32_t *out_width, uint32_t *out_height,
+				uint32_t *out_bpp, uint32_t *out_layout_height)
 {
-	int ret;
 	uint32_t aligned_width, aligned_height;
-	struct drm_mode_create_dumb create_dumb = { 0 };
 
 	aligned_width = width;
 	aligned_height = height;
@@ -376,16 +381,27 @@ int drv_dumb_bo_create_ex(struct bo *bo, uint32_t width, uint32_t height, uint32
 	if (quirks & BO_QUIRK_DUMB32BPP) {
 		aligned_width =
 		    DIV_ROUND_UP(aligned_width * layout_from_format(format)->bytes_per_pixel[0], 4);
-		create_dumb.bpp = 32;
+		*out_bpp = 32;
 	} else {
 		uint32_t tile = (quirks & BO_QUIRK_TILE_ALIGN_16) ? 16 : MESA_LLVMPIPE_TILE_SIZE;
 
 		aligned_width = ALIGN(aligned_width, tile);
 		aligned_height = ALIGN(aligned_height, tile);
-		create_dumb.bpp = layout_from_format(format)->bytes_per_pixel[0] * 8;
+		*out_bpp = layout_from_format(format)->bytes_per_pixel[0] * 8;
 	}
-	create_dumb.width = aligned_width;
-	create_dumb.height = aligned_height;
+	*out_width = aligned_width;
+	*out_height = aligned_height;
+	*out_layout_height = height;
+}
+
+int drv_dumb_bo_create_ex(struct bo *bo, uint32_t width, uint32_t height, uint32_t format,
+			  uint64_t use_flags, uint64_t quirks)
+{
+	int ret;
+	struct drm_mode_create_dumb create_dumb = { 0 };
+
+	drv_dumb_bo_get_dimensions(bo, width, height, format, quirks, &create_dumb.width,
+				   &create_dumb.height, &create_dumb.bpp, &height);
 	create_dumb.flags = 0;
 
 	ret = drmIoctl(bo->drv->fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_dumb);
